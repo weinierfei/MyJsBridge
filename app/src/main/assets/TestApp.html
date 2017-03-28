@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>
+        js调用java
+    </title>
+</head>
+<body>
+<p>
+    <xmp id="show">
+    </xmp>
+</p>
+<p>
+    <xmp id="init">
+    </xmp>
+</p>
+
+<p>
+    <input type="button" id="enter1" value="调用登录页面" onclick="testRemoteShowLogin();"
+    />
+</p>
+
+<p>
+    <input type="button" id="enter3" value="调用主页面" onclick="testRemoteShowMain();"
+    />
+</p>
+<p>
+    <input type="button" id="enter2" value="显示html" onclick="testDiv();"/>
+</p>
+
+<div id='buttons'></div>
+<div id='log'></div>
+
+<script>
+
+    function testDiv() {
+        document.getElementById("show").innerHTML = document.getElementsByTagName("html")[0].innerHTML;
+    }
+
+    window.onerror = function (err) {
+        console.log('window.onerror: ' + err)
+    }
+
+    function testRemoteShowLogin() {
+        console.log("js message==", "call native login")
+        //call native method
+        window.WebViewJavascriptBridge.callHandler(
+            'remoteShowLogin'
+            , {'param': '中文测试','userName':'dragon','password':'123456'}
+            , function (responseData) {
+                console.log("js message==", "rst=" + responseData)
+                document.getElementById("show").innerHTML = "send get responseData from java, data = " + responseData
+            }
+        );
+    }
+
+    function testRemoteShowMain() {
+        console.log("js message==", "call native main")
+        //call native method
+        window.WebViewJavascriptBridge.callHandler(
+            'remoteShowMain'
+            , {'param': '我是主页'}
+            , function (responseData) {
+                console.log("js message==", "rst=" + responseData)
+                document.getElementById("show").innerHTML = "send get responseData from java, data = " + responseData
+            }
+        );
+    }
+
+    /*这段代码是固定的，必须要放到js中*/
+    function setupWebViewJavascriptBridge(callback) {
+        if (window.WebViewJavascriptBridge) {
+            return callback(WebViewJavascriptBridge);
+        } else {
+            document.addEventListener(
+                'WebViewJavascriptBridgeReady'
+                , function () {
+                    callback(WebViewJavascriptBridge)
+                },
+                false
+            );
+        }
+        if (window.WVJBCallbacks) {
+            return window.WVJBCallbacks.push(callback);
+        }
+        window.WVJBCallbacks = [callback];
+        var WVJBIframe = document.createElement('iframe');
+        WVJBIframe.style.display = 'none';
+        WVJBIframe.src = 'wvjbscheme://__BRIDGE_LOADED__';
+        document.documentElement.appendChild(WVJBIframe);
+        setTimeout(function () {
+            document.documentElement.removeChild(WVJBIframe)
+        }, 0)
+    }
+
+    /*与OC交互的所有JS方法都要放在此处注册，才能调用通过JS调用OC或者让OC调用这里的JS*/
+    setupWebViewJavascriptBridge(function (bridge) {
+
+        bridge.init(function (message, responseCallback) {
+            console.log('JS got a message', message);
+            var data = {
+                'Javascript Responds': '测试中文!'
+            };
+            console.log('JS responding with', data);
+            responseCallback(data);
+        });
+
+        var uniqueId = 1;
+
+        function log(message, data) {
+            var log = document.getElementById('log');
+            var el = document.createElement('div');
+            el.className = 'logLine';
+            el.innerHTML = uniqueId++ + '. ' + message + ':<br/>' + JSON.stringify(data)
+            if (log.children.length) {
+                log.insertBefore(el, log.children[0])
+            }
+            else {
+                log.appendChild(el)
+            }
+        }
+
+//'jsRegisterList':'[{"scheme":"da-jxjy-app","target":"Homepage","action":"nativeHomepageViewController","transformType":"0"},{"scheme":"da-jxjy-app","target":"PaymentWeb","action":"payTableViewController","transformType":"1"}]'
+        bridge.registerHandler("getJSRegisterInfoHandler", function (data, responseCallback) {
+            console.log("getJSRegisterInfoHandler", "" + data);
+            var responseData = {
+//                "jsRegisterList":{"scheme":"da-jxjy-app","target":"com.dragon.jsbridge.LoginActivity","packageName":"com.dragon.jsbridge","action":"remoteShowLogin","transformType":"0"}
+                "jsRegisterList":[{"scheme": "da-jxjy-app","target": "com.dragon.jsbridge.LoginActivity","packageName":"com.dragon.jsbridge","action":"remoteShowLogin","transformType":"0"},{"scheme": "da-jxjy-app","target": "com.dragon.jsbridge.MainActivity","packageName":"com.dragon.jsbridge","action":"remoteShowMain","transformType":"0"}]
+            };
+            console.log("responseData", "responseData==" + responseData);
+            responseCallback(responseData);
+        });
+    })
+
+</script>
+</body>
+</html>
